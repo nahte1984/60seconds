@@ -131,9 +131,18 @@
     step();
   }
 
-  // the shell always wears whatever background the clock is wearing right now
+  // the shell always wears whatever background the clock is wearing right now -
+  // the page itself, and the browser's own bar (theme-color), which only understands plain hex
   const meta = document.querySelector('meta[name="theme-color"]');
   const clear = (c) => !c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)';
+  // the clock's colour comes back as color(srgb …) or rgb(…); a see-through colour is seen over white
+  const toHex = (c) => {
+    let m = c.match(/^color\(srgb ([\d.e+-]+) ([\d.e+-]+) ([\d.e+-]+)(?: \/ ([\d.e+-]+))?\)$/), v, a = 1;
+    if (m) { v = [m[1], m[2], m[3]].map((x) => x * 255); if (m[4] !== undefined) a = +m[4]; }
+    else if ((m = c.match(/^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/))) { v = [m[1], m[2], m[3]].map(Number); if (m[4] !== undefined) a = +m[4]; }
+    else return c;
+    return '#' + v.map((x) => Math.max(0, Math.min(255, Math.round(x * a + 255 * (1 - a)))).toString(16).padStart(2, '0')).join('');
+  };
   let last = '';
   (function sync() {
     requestAnimationFrame(sync);
@@ -147,6 +156,7 @@
       }
     } catch (e) { /* not readable: leave as is */ }
     if (current && clear(c)) c = '#ffffff';   // a page with no background is a white page
+    if (c) c = toHex(c);
     if (c && c !== last) {
       last = c;
       document.documentElement.style.background = c;
