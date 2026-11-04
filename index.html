@@ -9,7 +9,7 @@
 <link rel="icon" href="data:,">
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; background: #007b26; }
-  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: transparent; }
+  iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
   iframe.next { visibility: hidden; }
   .note { position: fixed; inset: auto 16px 16px; font: 12px/1.5 ui-monospace, Menlo, monospace; color: #fff; }
 </style>
@@ -131,8 +131,9 @@
     step();
   }
 
-  // the shell always wears whatever background the clock is wearing right now -
-  // the page itself, and the browser's own bar (theme-color), which only understands plain hex
+  // the shell always wears whatever background the clock is wearing right now, so the browser's own bars can follow it:
+  // Safari 26 tints them from the page's html/body background (and ignores theme-color); other browsers read theme-color,
+  // which only understands plain hex. Nothing in the shell is position: fixed, so Safari has no other element to sample.
   const meta = document.querySelector('meta[name="theme-color"]');
   const clear = (c) => !c || c === 'transparent' || c === 'rgba(0, 0, 0, 0)';
   // the clock's colour comes back as color(srgb …) or rgb(…); a see-through colour is seen over white
@@ -143,7 +144,7 @@
     else return c;
     return '#' + v.map((x) => Math.max(0, Math.min(255, Math.round(x * a + 255 * (1 - a)))).toString(16).padStart(2, '0')).join('');
   };
-  let last = '';
+  let last = '', lastFrame = null;
   (function sync() {
     requestAnimationFrame(sync);
     let c = '';
@@ -157,10 +158,12 @@
     } catch (e) { /* not readable: leave as is */ }
     if (current && clear(c)) c = '#ffffff';   // a page with no background is a white page
     if (c) c = toHex(c);
-    if (c && c !== last) {
+    if (c && (c !== last || current !== lastFrame)) {
       last = c;
-      document.documentElement.style.background = c;
-      document.body.style.background = c;
+      lastFrame = current;
+      document.documentElement.style.backgroundColor = c;
+      document.body.style.backgroundColor = c;
+      if (current) current.style.backgroundColor = c;
       if (meta) meta.content = c;
     }
   })();
